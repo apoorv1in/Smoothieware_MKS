@@ -81,15 +81,50 @@ bool Gcode::has_letter( char letter ) const
 // Retrieve the value for a given letter
 float Gcode::get_value( char letter, char **ptr ) const
 {
-    const char *cs = command;
-    char *cn = NULL;
+    char *cs = command;
     for (; *cs; cs++) {
         if( letter == *cs ) {
             cs++;
-            float r = strtof(cs, &cn);
-            if(ptr != nullptr) *ptr= cn;
-            if (cn > cs)
-                return r;
+            // Scan a float according to NIST RS274NGC Interpreter - Version 3, section 3.3.2.1. 
+            // Specifically do not allow "0X", "E" to be scanned as hexadecimal prefix or exponents, 
+            // those are valid G-code letters. Therefore we must not use strtof().
+            int factor = 1;
+            int64_t divisor = 1;
+            int64_t r = 0;
+            // Ignore whitespace
+            while ( ' ' == *cs || '\t' == *cs ) {
+                cs++;
+            }
+            char *c0 = cs;
+            // Parse sign
+            if ( '+' == *cs ) {
+                cs++;
+            }
+            else if ( '-' == *cs ) {
+                factor = -1;
+                cs++;
+            }
+            while ( isdigit(*cs) ) {
+                r *= 10;
+                r += (*cs - '0');
+                cs++;
+            }
+            if ( '.' == *cs ) {
+                cs++;
+                while ( isdigit(*cs) ) {
+                    if (r < (0x7FFFFFFFFFFFFFFFLL/12) && divisor < (0x7FFFFFFFFFFFFFFFLL/10)) {
+                        r *= 10;
+                        r += (*cs - '0');
+                        divisor *= 10;
+                    }
+                    cs++;
+                }
+            }
+            r *= factor;
+
+            if(ptr != nullptr) *ptr= cs;
+            if (cs > c0)
+                return (float)r/(float)divisor;
         }
     }
     if(ptr != nullptr) *ptr= nullptr;
