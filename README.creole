@@ -1,3 +1,5 @@
+Changes to support MKS-SBase V1.3 board
+
 Current build status: {{https://travis-ci.org/Smoothieware/Smoothieware.svg?branch=edge}}
 
 ==Overview
